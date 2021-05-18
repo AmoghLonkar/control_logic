@@ -1,3 +1,5 @@
+package openram_testchip
+
 import chisel3._
 import chisel3.tester._
 import org.scalatest.FreeSpec
@@ -9,14 +11,13 @@ class OpenramTestChipTester extends FreeSpec with ChiselScalatestTester {
     
   "OpenramTestChip should write to SRAM 0" in {
     test(new openram_testchip) { dut =>
-    1'b0, 1'b0, 1'b0, 4'd15, 8'd1, 32'd1, 1'b0, 8'd0
-            val packet = BigInt("1E020000000200", 16)
-            dut.io.logical_analyzer_packet.poke(packet.U)
-            dut.io.gpio_packet.poke(0.U)
-            dut.io.in_select.poke(false.B)
-            clock.step()
-            dut.io.sram0_connections.expect(packet.U)
-            dut.io.sram1_connections.expect((scala.math.pow(2, 55)).U)
+        val packet = BigInt("1E020000000200", 16)
+        dut.io.logical_analyzer_packet.poke(packet.U)
+        dut.io.gpio_packet.poke(0.U)
+        dut.io.in_select.poke(false.B)
+        dut.clock.step()
+        dut.io.sram0_connections.expect(packet.U)
+        dut.io.sram1_connections.expect((Seq.fill(55)(BigInt(2)).reduce(_*_) - 1).U)
     }  
   }
 
