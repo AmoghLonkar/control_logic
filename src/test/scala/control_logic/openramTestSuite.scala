@@ -42,7 +42,7 @@ class OpenramTestChipTester extends FreeSpec with ChiselScalatestTester {
   "OpenramTestChip should write to SRAM 1" in {
     test(new openram_testchip) { dut =>    
         //Writing 1 to address 1 in SRAM 1  
-        val packet = BigInt("9E020000000200", 16)
+        val packet = BigInt("080000000E020000000200", 16)
         val MOD = (Seq.fill(54)(BigInt(2)).reduce(_*_) )
         val MASK = (Seq.fill(55)(BigInt(2)).reduce(_*_) - 1)
         dut.io.logical_analyzer_packet.poke(packet.U)
@@ -73,15 +73,17 @@ class OpenramTestChipTester extends FreeSpec with ChiselScalatestTester {
     }
   }
 
-  "OpenramTestChip should read from RO Port in SRAM 0" in {
-    
-  }
-
-  "OpenramTestChip should read from R/W Port in SRAM 1" in {
-    
-  }
-
-  "OpenramTestChip should read from RO Port in SRAM 1" in {
-    
+  "OpenramTestChip should write to shared R/W Port in SRAM 2" in {
+    test(new openram_testchip) { dut =>    
+        //Writing 1 to address 1 in SRAM 1  
+        val packet = BigInt("100000000E020000000200", 16)
+        val MOD = (Seq.fill(47)(BigInt(2)).reduce(_*_) )
+        val MASK = (Seq.fill(48)(BigInt(2)).reduce(_*_) - 1)
+        dut.io.logical_analyzer_packet.poke(packet.U)
+        dut.io.gpio_packet.poke(0.U)
+        dut.io.in_select.poke(false.B)
+        dut.clock.step()
+        dut.io.sram2_connections.expect((packet % MOD).U)
+    }
   }
 }
