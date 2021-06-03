@@ -40,6 +40,8 @@ class OpenramTestChipTester extends FreeSpec with ChiselScalatestTester {
         dut.clock.step(2)
         dut.io.sram0_connections.expect((packet % MOD).U)
         dut.io.sram1_connections.expect(MASK.U)
+        dut.clock.step(5)
+        dut.io.sram0_connections.expect((packet % MOD).U)
     }  
   }
 
@@ -95,7 +97,7 @@ class OpenramTestChipTester extends FreeSpec with ChiselScalatestTester {
         dut.io.sram1_connections.expect(MASK.U)
         dut.clock.step()
         dut.io.sram0_rw_in.poke(1.U)
-        dut.clock.step(2)
+        dut.clock.step()
         dut.io.gpio_data.expect(1.U)
         dut.clock.step()
         dut.io.gpio_data.expect(0.U)
