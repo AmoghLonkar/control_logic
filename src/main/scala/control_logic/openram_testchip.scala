@@ -46,7 +46,7 @@ class openram_testchip extends Module {
 
     val SRAMDataReceived = RegInit(false.B)
     val (loadingCount, loadingDone) = Counter(0 until 3, gpio_sel, !gpio_sel)
-    val (transferCount, transferDone) = Counter(0 until 1, SRAMDataReceived)
+    val (transferCount, transferDone) = Counter(0 until 2, RegNext(SRAMDataReceived))
 
     val wrap = RegNext(loadingDone)
     val packetSeq = Reg(Vec(3, UInt(32.W)))
@@ -61,6 +61,9 @@ class openram_testchip extends Module {
         input := Cat(packetSeq(2), packetSeq(1), packetSeq(0))
     }
     
+    when(!gpio_sel){
+        input := input
+    }
     val chip_select: UInt = input(85, 83)
     
     io.sram0_connections := getMask(55)
@@ -102,7 +105,6 @@ class openram_testchip extends Module {
         }
     }
 
-    printf("Input: %d\n", input)
     output := 0.U
     //If operation is read
     when(web){
@@ -137,7 +139,7 @@ class openram_testchip extends Module {
             SRAMDataReceived := true.B 
         }
     }
-    
+
     io.la_data := 0.U 
     io.gpio_data := 0.U 
     when(in_sel === 1.U){
