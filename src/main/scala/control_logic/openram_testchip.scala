@@ -5,10 +5,12 @@ package openram_testchip
 import chisel3._
 import chisel3.util._
 
+import scala.collection.mutable.ArrayBuffer
+
 class openram_testchip extends Module {
     val io = IO(new Bundle{
         val logical_analyzer_packet = Input(UInt(86.W))
-        val gpio_packet = Input(UInt(56.W))
+        val gpio_packet = Input(UInt(32.W))
         val in_select = Input(Bool())
         val sram0_rw_in = Input(UInt(32.W))
         val sram0_r0_in = Input(UInt(32.W))
@@ -28,6 +30,9 @@ class openram_testchip extends Module {
     })
 
     val input = Reg(UInt(86.W))
+    val gpio_sel = RegInit(true.B)
+    val la_sel = RegNext(io.in_select)
+    gpio_sel := io.in_select
 
     def getMask(bitWidth: Int): UInt = {
         val MOD = BigInt(1) << bitWidth
@@ -35,8 +40,20 @@ class openram_testchip extends Module {
         MASK.U
     }
 
-    input := Mux(io.in_select, io.gpio_packet, io.logical_analyzer_packet)
+    val (loadingCount, loadingDone) = Counter(0 until 3, gpio_sel, !gpio_sel)
+    val wrap = RegNext(loadingDone)
+    val packetSeq = Reg(Vec(3, UInt(32.W)))
+    packetSeq := VecInit(Seq.fill(3)(0.U))
 
+    input := io.logical_analyzer_packet
+
+    gpio_sel := Mux((!wrap && gpio_sel), true.B, false.B)
+    (0 until 3).foreach(i => packetSeq(i) := Mux(loadingCount === i.U, io.gpio_packet, packetSeq(i)))
+
+    when(wrap && gpio_sel){
+        input := Cat(packetSeq(2), packetSeq(1), packetSeq(0))
+    }
+    
     val chip_select: UInt = input(85, 83)
     
     io.sram0_connections := getMask(55)
@@ -49,29 +66,32 @@ class openram_testchip extends Module {
     val csb0 = input(54)
     val web = input(53)
 
-    switch(chip_select){
-        is(0.U){
-            io.sram0_connections := input.tail(31)
-        }
+    when(!gpio_sel || !la_sel)
+    {
+        switch(chip_select){
+            is(0.U){
+                io.sram0_connections := input.tail(31)
+            }
 
-        is(1.U){
-            io.sram1_connections := input.tail(31)
-        }
+            is(1.U){
+                io.sram1_connections := input.tail(31)
+            }
 
-        is(2.U){
-            io.sram2_connections := input.tail(38)
-        }
+            is(2.U){
+                io.sram2_connections := input.tail(38)
+            }
 
-        is(3.U){
-            io.sram3_connections := input.tail(40)
-        }
-        
-        is(4.U){
-            io.sram4_connections := input.tail(39)
-        }
+            is(3.U){
+                io.sram3_connections := input.tail(40)
+            }
+            
+            is(4.U){
+                io.sram4_connections := input.tail(39)
+            }
 
-        is(5.U){
-            io.sram5_connections := input.tail(3)
+            is(5.U){
+                io.sram5_connections := input.tail(3)
+            }
         }
     }
 
