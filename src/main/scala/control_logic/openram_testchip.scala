@@ -26,10 +26,14 @@ class openram_testchip extends Module {
         val sram3_connections = Output(UInt(46.W))
         val sram4_connections = Output(UInt(47.W))
         val sram5_connections = Output(UInt(83.W))
-        val sram_data = Output(UInt(64.W))
+        val la_data = Output(UInt(64.W))
+        val gpio_data = Output(UInt(32.W))
     })
 
     val input = Reg(UInt(86.W))
+    val output = Reg(UInt(64.W))
+    val in_sel = RegNext(io.in_select)
+    
     val gpio_sel = RegInit(true.B)
     val la_sel = RegNext(io.in_select)
     gpio_sel := io.in_select
@@ -40,7 +44,10 @@ class openram_testchip extends Module {
         MASK.U
     }
 
+    val SRAMDataReceived = RegInit(false.B)
     val (loadingCount, loadingDone) = Counter(0 until 3, gpio_sel, !gpio_sel)
+    val (transferCount, transferDone) = Counter(0 until 1, SRAMDataReceived)
+
     val wrap = RegNext(loadingDone)
     val packetSeq = Reg(Vec(3, UInt(32.W)))
     packetSeq := VecInit(Seq.fill(3)(0.U))
@@ -95,35 +102,53 @@ class openram_testchip extends Module {
         }
     }
 
-    io.sram_data := 0.U
+    printf("Input: %d\n", input)
+    output := 0.U
     //If operation is read
     when(web){
         switch(chip_select){
             
             is(0.U){
-                io.sram_data := Mux(csb0, io.sram0_r0_in, io.sram0_rw_in)
+                output := Mux(csb0, io.sram0_r0_in, io.sram0_rw_in)
             }
 
             is(1.U){
-                io.sram_data :=  Mux(csb0, io.sram1_ro_in, io.sram1_rw_in)
+                output :=  Mux(csb0, io.sram1_ro_in, io.sram1_rw_in)
             }
 
             is(2.U){
-                io.sram_data := io.sram2_rw_in
+                output := io.sram2_rw_in
             }
 
             is(3.U){
-                io.sram_data := io.sram3_rw_in
+                output := io.sram3_rw_in
             }
 
             is(4.U){
-                io.sram_data := io.sram4_rw_in
+                output := io.sram4_rw_in
             }
             
             is(5.U){
-                io.sram_data := io.sram5_rw_in
+                output := io.sram5_rw_in
             }
         }
+
+        when(in_sel === 1.U){
+            SRAMDataReceived := true.B 
+        }
+    }
+    
+    io.la_data := 0.U 
+    io.gpio_data := 0.U 
+    when(in_sel === 1.U){
+        when(transferCount === 0.U){
+            io.gpio_data := output(31, 0)
+        }.elsewhen(transferCount === 1.U){
+            io.gpio_data := output(63, 32)
+            SRAMDataReceived := false.B
+        }
+    }.otherwise{
+        io.la_data := output
     }
 }
 
